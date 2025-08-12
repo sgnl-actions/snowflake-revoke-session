@@ -1,48 +1,44 @@
-name: job-template
-description: Template for SGNL JavaScript jobs - replace with your job description
+name: snowflake-revoke-session
+description: Revoke all active sessions for a Snowflake user by disabling and re-enabling the account
 
 # Input parameters for web form generation
 inputs:
-  target:
+  username:
     type: text
-    description: Target resource identifier (e.g., user email, group ID)
+    description: The Snowflake username to revoke sessions for
     required: true
     validation:
       min: 1
       max: 100
 
-  action:
-    type: text
-    description: Action to perform on the target resource
-    required: true
-    validation:
-      min: 1
-      max: 50
-
-  options:
-    type: array
-    description: Additional options for the operation
-    required: false
-    item_type: text
-    validation:
-      max: 10
-
-  dry_run:
-    type: boolean
-    description: Preview changes without executing them
-    required: false
-    default: false
-
 # Expected output structure
 outputs:
-  status:
+  username:
     type: text
-    description: Operation result (success, failed, recovered, etc.)
+    description: The Snowflake username that was processed
 
-  target:
+  sessionsRevoked:
+    type: boolean
+    description: Whether the sessions were successfully revoked
+
+  userDisabled:
     type: text
-    description: The target resource that was processed
+    description: Statement handle or status for the disable operation
 
-  processed_at:
+  userReEnabled:
+    type: text
+    description: Statement handle or status for the re-enable operation
+
+  revokedAt:
     type: datetime
-    description: When the operation completed (ISO 8601)
+    description: When the revocation completed (ISO 8601)
+
+# Required secrets (configured at deployment time)
+secrets:
+  - SNOWFLAKE_TOKEN
+
+# Runtime configuration
+runtime:
+  type: nodejs-22
+  timeout: 30s
+  memory: 128Mi
