@@ -6,7 +6,7 @@ describe('Snowflake Revoke Session Script', () => {
       ENVIRONMENT: 'test'
     },
     secrets: {
-      SNOWFLAKE_TOKEN: 'Bearer test-snowflake-token-123456'
+      BEARER_AUTH_TOKEN: 'Bearer test-snowflake-token-123456'
     },
     outputs: {}
   };
@@ -34,7 +34,7 @@ describe('Snowflake Revoke Session Script', () => {
         .rejects.toThrow('Invalid or missing username parameter');
     });
 
-    test('should throw error for missing SNOWFLAKE_TOKEN', async () => {
+    test('should throw error for missing BEARER_AUTH_TOKEN', async () => {
       const params = {
         username: 'testuser'
       };
@@ -45,7 +45,7 @@ describe('Snowflake Revoke Session Script', () => {
       };
 
       await expect(script.invoke(params, contextWithoutToken))
-        .rejects.toThrow('Missing required secret: SNOWFLAKE_TOKEN');
+        .rejects.toThrow('Missing required secret: BEARER_AUTH_TOKEN');
     });
 
     test('should validate empty username', async () => {

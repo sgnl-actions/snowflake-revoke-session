@@ -89,11 +89,11 @@ export default {
 
       console.log(`Processing username: ${username}`);
 
-      if (!context.secrets?.SNOWFLAKE_TOKEN) {
-        throw new FatalError('Missing required secret: SNOWFLAKE_TOKEN');
+      if (!context.secrets?.BEARER_AUTH_TOKEN) {
+        throw new FatalError('Missing required secret: BEARER_AUTH_TOKEN');
       }
 
-      const token = context.secrets.SNOWFLAKE_TOKEN;
+      const token = context.secrets.BEARER_AUTH_TOKEN;
       const tokenType = determineTokenType(token);
 
       // Step 1: Disable the user (this revokes all sessions)
