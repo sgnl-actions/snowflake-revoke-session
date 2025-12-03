@@ -11,6 +11,21 @@ inputs:
       min: 1
       max: 100
 
+  delay:
+    type: text
+    description: Delay between disable and re-enable operations (e.g., 100ms, 1s)
+    required: false
+    validation:
+      max: 50
+
+  address:
+    type: text
+    description: Snowflake API base URL (e.g., https://api.snowflakecomputing.com)
+    required: false
+    validation:
+      min: 1
+      max: 255
+
 # Expected output structure
 outputs:
   username:
@@ -33,9 +48,52 @@ outputs:
     type: datetime
     description: When the revocation completed (ISO 8601)
 
-# Required secrets (configured at deployment time)
+# Secrets (configured at deployment time)
 secrets:
-  - SNOWFLAKE_TOKEN
+  BEARER_AUTH_TOKEN:
+    description: Snowflake API Bearer token (for Bearer authentication)
+    required: false
+
+  BASIC_USERNAME:
+    description: Username for Basic authentication
+    required: false
+
+  BASIC_PASSWORD:
+    description: Password for Basic authentication
+    required: false
+
+  OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET:
+    description: Client secret for OAuth2 Client Credentials flow
+    required: false
+
+  OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN:
+    description: Access token for OAuth2 Authorization Code flow
+    required: false
+
+environment:
+  ADDRESS:
+    description: Snowflake API base URL
+    default: "https://api.snowflakecomputing.com"
+
+  OAUTH2_CLIENT_CREDENTIALS_CLIENT_ID:
+    description: Client ID for OAuth2 Client Credentials flow
+    required: false
+
+  OAUTH2_CLIENT_CREDENTIALS_TOKEN_URL:
+    description: Token endpoint URL for OAuth2 Client Credentials flow
+    required: false
+
+  OAUTH2_CLIENT_CREDENTIALS_SCOPE:
+    description: OAuth2 scopes for Client Credentials flow
+    required: false
+
+  OAUTH2_CLIENT_CREDENTIALS_AUDIENCE:
+    description: OAuth2 audience for Client Credentials flow
+    required: false
+
+  OAUTH2_CLIENT_CREDENTIALS_AUTH_STYLE:
+    description: OAuth2 auth style for Client Credentials flow
+    required: false
 
 # Runtime configuration
 runtime:
