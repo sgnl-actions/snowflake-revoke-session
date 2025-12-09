@@ -2,11 +2,11 @@ import script from '../src/script.mjs';
 
 describe('Snowflake Revoke Session Script', () => {
   const mockContext = {
-    env: {
-      ENVIRONMENT: 'test'
+    environment: {
+      ADDRESS: 'https://api.snowflakecomputing.com'
     },
     secrets: {
-      SNOWFLAKE_TOKEN: 'Bearer test-snowflake-token-123456'
+      BEARER_AUTH_TOKEN: 'Bearer test-snowflake-token-123456'
     },
     outputs: {}
   };
@@ -34,7 +34,7 @@ describe('Snowflake Revoke Session Script', () => {
         .rejects.toThrow('Invalid or missing username parameter');
     });
 
-    test('should throw error for missing SNOWFLAKE_TOKEN', async () => {
+    test('should throw error for missing authentication', async () => {
       const params = {
         username: 'testuser'
       };
@@ -45,7 +45,7 @@ describe('Snowflake Revoke Session Script', () => {
       };
 
       await expect(script.invoke(params, contextWithoutToken))
-        .rejects.toThrow('Missing required secret: SNOWFLAKE_TOKEN');
+        .rejects.toThrow('No authentication configured');
     });
 
     test('should validate empty username', async () => {
