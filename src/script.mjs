@@ -47,7 +47,7 @@ function parseDuration(durationStr) {
 }
 
 async function executeStatement(statement, authHeader, baseUrl) {
-  const url = `${baseUrl.replace(/\/$/, '')}/api/v2/statements`;
+  const url = `${baseUrl}/api/v2/statements`;
 
   // Extract the token from the Authorization header to determine type
   const token = authHeader.replace(/^Bearer\s+/i, '');
