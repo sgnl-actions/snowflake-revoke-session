@@ -1,4 +1,5 @@
 import script from '../src/script.mjs';
+import { SGNL_USER_AGENT } from '@sgnl-actions/utils';
 
 describe('Snowflake Revoke Session Script', () => {
   const mockContext = {
@@ -55,6 +56,27 @@ describe('Snowflake Revoke Session Script', () => {
 
       await expect(script.invoke(params, mockContext))
         .rejects.toThrow('Invalid or missing username parameter');
+    });
+
+    test('should include User-Agent header in API calls', async () => {
+      const params = {
+        username: 'testuser'
+      };
+
+      let capturedOptions;
+      global.fetch = async (url, options) => {
+        capturedOptions = options;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ message: 'Session revoked' }),
+          text: async () => 'Session revoked'
+        };
+      };
+
+      await script.invoke(params, mockContext);
+
+      expect(capturedOptions.headers['User-Agent']).toBe(SGNL_USER_AGENT);
     });
 
     // Note: Testing actual Snowflake API calls would require mocking fetch
