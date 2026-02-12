@@ -1,4 +1,4 @@
-import { getAuthorizationHeader, getBaseURL} from '@sgnl-actions/utils';
+import { getAuthorizationHeader, getBaseURL, SGNL_USER_AGENT} from '@sgnl-actions/utils';
 
 class RetryableError extends Error {
   constructor(message) {
@@ -56,7 +56,8 @@ async function executeStatement(statement, authHeader, baseUrl) {
   const headers = {
     'Authorization': authHeader,
     'Content-Type': 'application/json',
-    'Accept': '*/*'
+    'Accept': '*/*',
+    'User-Agent': SGNL_USER_AGENT
   };
 
   // Add token type header if specified
