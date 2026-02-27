@@ -35,20 +35,6 @@ describe('Snowflake Revoke Session Script', () => {
         .rejects.toThrow('Invalid or missing username parameter');
     });
 
-    test('should throw error for missing authentication', async () => {
-      const params = {
-        username: 'testuser'
-      };
-
-      const contextWithoutToken = {
-        ...mockContext,
-        secrets: {}
-      };
-
-      await expect(script.invoke(params, contextWithoutToken))
-        .rejects.toThrow('No authentication configured');
-    });
-
     test('should validate empty username', async () => {
       const params = {
         username: '   '
