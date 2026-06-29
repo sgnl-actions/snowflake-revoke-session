@@ -80,7 +80,6 @@ environment:
   ADDRESS:
     type: text
     description: Snowflake API base URL
-    default: "https://api.snowflakecomputing.com"
 
   OAUTH2_CLIENT_CREDENTIALS_CLIENT_ID:
     type: text
