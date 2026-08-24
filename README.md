@@ -14,16 +14,17 @@ This action revokes all active sessions for a Snowflake user by temporarily disa
 
 ## Input Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `username` | String | Yes | The Snowflake username to revoke sessions for |
-| `delay` | Duration | No | Delay between disable and re-enable operations (e.g., 100ms, 1s). Default: 100ms |
-| `address` | String | No | Snowflake API base URL (e.g., https://api.snowflakecomputing.com) |
+| Parameter                   | Type     | Required | Description                                                                                                                                                                                 |
+| --------------------------- | -------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `username`                  | String   | Yes      | The Snowflake username to revoke sessions for                                                                                                                                               |
+| `delay`                     | Duration | No       | Delay between disable and re-enable operations (e.g., 100ms, 1s). Default: 100ms                                                                                                            |
+| `address`                   | String   | No       | Snowflake API base URL (e.g., https://api.snowflakecomputing.com)                                                                                                                           |
+| `snowflake_auth_token_type` | String   | No       | Override the `X-Snowflake-Authorization-Token-Type` header. One of `KEYPAIR_JWT`, `OAUTH`, `PROGRAMMATIC_ACCESS_TOKEN`, or `AUTO`. See [Token Type Detection](#token-type-detection) below. |
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
+| Variable  | Default                              | Description                                                           |
+| --------- | ------------------------------------ | --------------------------------------------------------------------- |
 | `ADDRESS` | `https://api.snowflakecomputing.com` | Snowflake API base URL (can also be provided via `address` parameter) |
 
 ## Authentication
@@ -31,13 +32,11 @@ This action revokes all active sessions for a Snowflake user by temporarily disa
 This action supports multiple authentication methods. Configure the appropriate secrets and environment variables based on your chosen authentication method:
 
 ### Bearer Token Authentication
-- `BEARER_AUTH_TOKEN` (secret) - Your Snowflake API Bearer token (JWT or OAuth)
 
-### Basic Authentication
-- `BASIC_USERNAME` (secret) - Your Snowflake username
-- `BASIC_PASSWORD` (secret) - Your Snowflake password
+- `BEARER_AUTH_TOKEN` (secret) - Your Snowflake API Bearer token (JWT, OAuth, or PAT)
 
 ### OAuth2 Client Credentials
+
 - `OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET` (secret) - OAuth2 client secret
 - `OAUTH2_CLIENT_CREDENTIALS_CLIENT_ID` (environment) - OAuth2 client ID
 - `OAUTH2_CLIENT_CREDENTIALS_TOKEN_URL` (environment) - OAuth2 token endpoint URL
@@ -46,7 +45,10 @@ This action supports multiple authentication methods. Configure the appropriate 
 - `OAUTH2_CLIENT_CREDENTIALS_AUTH_STYLE` (environment) - OAuth2 auth style (optional)
 
 ### OAuth2 Authorization Code
+
 - `OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN` (secret) - OAuth2 access token
+
+Basic Authentication (username/password) is **not supported** — the Snowflake SQL API only accepts bearer-style tokens. See [SQL API Authentication](https://docs.snowflake.com/en/developer-guide/sql-api/authenticating).
 
 ## Development
 
@@ -83,17 +85,18 @@ npm run lint:fix
 
 The action returns the following information:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `username` | String | The Snowflake username that was processed |
-| `sessionsRevoked` | Boolean | Whether the sessions were successfully revoked |
-| `userDisabled` | String | Statement handle or status for the disable operation |
-| `userReEnabled` | String | Statement handle or status for the re-enable operation |
-| `revokedAt` | DateTime | When the revocation completed (ISO 8601) |
+| Field             | Type     | Description                                            |
+| ----------------- | -------- | ------------------------------------------------------ |
+| `username`        | String   | The Snowflake username that was processed              |
+| `sessionsRevoked` | Boolean  | Whether the sessions were successfully revoked         |
+| `userDisabled`    | String   | Statement handle or status for the disable operation   |
+| `userReEnabled`   | String   | Statement handle or status for the re-enable operation |
+| `revokedAt`       | DateTime | When the revocation completed (ISO 8601)               |
 
 ## How It Works
 
 This action revokes Snowflake sessions by:
+
 1. Disabling the user account (which revokes all active sessions)
 2. Waiting for a configurable delay (default: 100ms)
 3. Re-enabling the user account
@@ -105,19 +108,21 @@ The delay ensures that the disable operation completes before re-enabling the ac
 Your script must export a default object with these handlers:
 
 ### `invoke` (Required)
+
 Main execution logic for your job.
 
 ```javascript
 invoke: async (params, context) => {
   // Your job logic here
   return {
-    status: 'success',
+    status: "success",
     // ... other outputs
   };
-}
+};
 ```
 
 ### `error` (Optional)
+
 Error recovery logic when `invoke` fails.
 
 ```javascript
@@ -125,13 +130,14 @@ error: async (params, context) => {
   // params.error contains the original error
   // Attempt recovery or cleanup
   return {
-    status: 'recovered',
+    status: "recovered",
     // ... recovery results
   };
-}
+};
 ```
 
-### `halt` (Optional)  
+### `halt` (Optional)
+
 Graceful shutdown when job is cancelled or times out.
 
 ```javascript
@@ -139,10 +145,10 @@ halt: async (params, context) => {
   // params.reason contains halt reason
   // Clean up resources, save partial progress
   return {
-    status: 'halted',
-    cleanup_completed: true
+    status: "halted",
+    cleanup_completed: true,
   };
-}
+};
 ```
 
 ## Context Object
@@ -175,8 +181,8 @@ Tests are in `tests/script.test.js`. Update the mock data to match your job's in
 
 ```javascript
 const params = {
-  target: 'your-target',
-  action: 'your-action'
+  target: "your-target",
+  action: "your-action",
   // ... other inputs
 };
 ```
@@ -188,7 +194,7 @@ Use `npm run dev` to test your script locally with mock data. Update `scripts/de
 ## Deployment
 
 1. **Ensure tests pass**: `npm test`
-2. **Validate metadata**: `npm run validate`  
+2. **Validate metadata**: `npm run validate`
 3. **Build distribution**: `npm run build`
 4. **Create git tag**: `git tag v1.0.0`
 5. **Push to GitHub**: `git push origin v1.0.0`
@@ -249,11 +255,26 @@ Use `npm run dev` to test your script locally with mock data. Update `scripts/de
 
 ## Token Type Detection
 
-When using Bearer token authentication, the action automatically detects the token type:
-- JWT tokens (with 3 parts separated by dots) are treated as KEYPAIR_JWT
-- Other tokens are treated as OAUTH tokens
+The Snowflake SQL API can be told which kind of token it's receiving via the `X-Snowflake-Authorization-Token-Type` header, so it doesn't have to guess. This action sets that header automatically based on which auth method you configured:
 
-This detection adds the appropriate `X-Snowflake-Authorization-Token-Type` header to API requests.
+| Configured auth method                    | Token type sent |
+| ----------------------------------------- | --------------- |
+| `BEARER_AUTH_TOKEN`                       | `KEYPAIR_JWT`   |
+| `OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET` | `OAUTH`         |
+| `OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN`  | `OAUTH`         |
+
+If your Bearer token is actually a PAT, Workload Identity Federation token, or you want Snowflake to auto-detect the type itself, override it with the `snowflake_auth_token_type` input parameter:
+
+| Value                          | Effect                                                                                                                                                                                                                                             |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KEYPAIR_JWT`                  | Force key-pair JWT token type                                                                                                                                                                                                                      |
+| `OAUTH`                        | Force OAuth token type                                                                                                                                                                                                                             |
+| `PROGRAMMATIC_ACCESS_TOKEN`    | Force PAT token type                                                                                                                                                                                                                               |
+| `WORKLOAD_IDENTITY_FEDERATION` | Force WIF token type. Note: WIF tokens also require the `Authorization` header to use the format `Bearer WIF.{provider}.{token}` (where provider is `AWS`, `AZURE`, `GCP`, or `OIDC`). Supply the full pre-formatted value as `BEARER_AUTH_TOKEN`. |
+| `AUTO`                         | Omit the header entirely; Snowflake inspects the token itself                                                                                                                                                                                      |
+
+See [Snowflake SQL API Authentication](https://docs.snowflake.com/en/developer-guide/sql-api/authenticating) and [Snowflake REST API Authentication](https://docs.snowflake.com/en/developer-guide/snowflake-rest-api/authentication) for details on this header and the supported token types.
+
+> **Note:** Prior to this change, the token type was guessed by inspecting the token's shape (three dot-separated segments implied a JWT). This misclassified OAuth access tokens — which are frequently JWT-shaped — as `KEYPAIR_JWT`, causing Snowflake to reject otherwise valid OAuth requests. Detection is now based on the configured auth method instead.
 
 ## Support
-

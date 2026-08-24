@@ -46,12 +46,8 @@ function parseDuration(durationStr) {
   }
 }
 
-async function executeStatement(statement, authHeader, baseUrl) {
+async function executeStatement(statement, authHeader, baseUrl, tokenType) {
   const url = `${baseUrl}/api/v2/statements`;
-
-  // Extract the token from the Authorization header to determine type
-  const token = authHeader.replace(/^Bearer\s+/i, '');
-  const tokenType = determineTokenType(token);
 
   const headers = {
     'Authorization': authHeader,
@@ -60,7 +56,8 @@ async function executeStatement(statement, authHeader, baseUrl) {
     'User-Agent': SGNL_USER_AGENT
   };
 
-  // Add token type header if specified
+  // Add token type header if specified. Omitted for AUTO, letting Snowflake
+  // detect the token type itself.
   if (tokenType) {
     headers['X-Snowflake-Authorization-Token-Type'] = tokenType;
   }
@@ -102,13 +99,57 @@ async function executeStatement(statement, authHeader, baseUrl) {
   return data;
 }
 
-function determineTokenType(authToken) {
-  // If token appears to be JWT (has three dots), assume KEYPAIR_JWT
-  // Otherwise, assume OAUTH
-  if (authToken && authToken.split('.').length === 3) {
+// Valid token type values from Snowflake SQL API auth docs:
+// https://docs.snowflake.com/en/developer-guide/sql-api/authenticating
+const VALID_TOKEN_TYPES = new Set(['KEYPAIR_JWT', 'OAUTH', 'PROGRAMMATIC_ACCESS_TOKEN', 'WORKLOAD_IDENTITY_FEDERATION']);
+
+/**
+ * Determine the X-Snowflake-Authorization-Token-Type header value based on
+ * the configured auth method in context. Returns null when the header should
+ * be omitted (AUTO mode) — Snowflake will auto-detect in that case.
+ *
+ * An explicit params.snowflake_auth_token_type input overrides the
+ * auto-selected value. Set it to "AUTO" to omit the header entirely.
+ *
+ * @param {Object} params - Job input parameters
+ * @param {Object} context - Execution context
+ * @returns {string|null} Token type value, or null to omit the header
+ */
+function getTokenType(params, context) {
+  const secrets = context.secrets || {};
+
+  const override = params.snowflake_auth_token_type;
+  if (override !== undefined && override !== null && override !== '') {
+    if (override === 'AUTO') {
+      return null;
+    }
+    if (!VALID_TOKEN_TYPES.has(override)) {
+      throw new FatalError(
+        `Invalid snowflake_auth_token_type "${override}". Valid values: ${[...VALID_TOKEN_TYPES].join(', ')}, AUTO`
+      );
+    }
+    return override;
+  }
+
+  // Mirror action-scheduler's params.go logic: key off auth method type,
+  // not token content. OAuth tokens are often JWTs and would be misdetected
+  // by content-inspection.
+  if (secrets.BEARER_AUTH_TOKEN) {
     return 'KEYPAIR_JWT';
   }
-  return 'OAUTH';
+  if (secrets.OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET || secrets.OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN) {
+    return 'OAUTH';
+  }
+
+  // Basic auth is not supported by Snowflake's SQL API — reject early rather
+  // than letting Snowflake return an opaque 401.
+  if (secrets.BASIC_USERNAME || secrets.BASIC_PASSWORD) {
+    throw new FatalError(
+      'Basic authentication is not supported by the Snowflake SQL API. Use Bearer, OAuth2 Client Credentials, or OAuth2 Authorization Code instead.'
+    );
+  }
+
+  return null;
 }
 
 export default {
@@ -116,17 +157,15 @@ export default {
    * Main execution handler - revokes all active sessions for a Snowflake user
    * @param {Object} params - Job input parameters
    * @param {string} params.username - The Snowflake username to revoke sessions for (required)
-   * @param {string} params.delay - Optional delay between disable and re-enable operations (e.g., 100ms, 1s)
-   * @param {string} params.address - Optional Snowflake API base URL
+   * @param {string} [params.delay] - Optional delay between disable and re-enable operations (e.g., 100ms, 1s)
+   * @param {string} [params.address] - Optional Snowflake API base URL
+   * @param {string} [params.snowflake_auth_token_type] - Optional override for X-Snowflake-Authorization-Token-Type header
    *
    * @param {Object} context - Execution context with secrets and environment
    * @param {string} context.environment.ADDRESS - Snowflake API base URL
    *
-   * The configured auth type will determine which of the following environment variables and secrets are available
+   * The configured auth type will determine which of the following secrets are available:
    * @param {string} context.secrets.BEARER_AUTH_TOKEN
-   *
-   * @param {string} context.secrets.BASIC_USERNAME
-   * @param {string} context.secrets.BASIC_PASSWORD
    *
    * @param {string} context.secrets.OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET
    * @param {string} context.environment.OAUTH2_CLIENT_CREDENTIALS_AUDIENCE
@@ -149,7 +188,9 @@ export default {
 
       console.log(`Processing username: ${username}`);
 
-      // Get authorization header
+      // Get authorization header and token type before making any requests so
+      // Basic auth and invalid overrides fail fast before hitting the network.
+      const tokenType = getTokenType(params, context);
       const authHeader = await getAuthorizationHeader(context);
 
       // Get base URL
@@ -161,7 +202,7 @@ export default {
       // Step 1: Disable the user (this revokes all sessions)
       console.log(`Disabling user: ${username}`);
       const disableStatement = `ALTER USER ${username} SET DISABLED = TRUE`;
-      const disableResult = await executeStatement(disableStatement, authHeader, baseUrl);
+      const disableResult = await executeStatement(disableStatement, authHeader, baseUrl, tokenType);
 
       // Add delay between operations
       console.log(`Waiting ${delayMs}ms before re-enabling user`);
@@ -170,7 +211,7 @@ export default {
       // Step 2: Re-enable the user
       console.log(`Re-enabling user: ${username}`);
       const enableStatement = `ALTER USER ${username} SET DISABLED = FALSE`;
-      const enableResult = await executeStatement(enableStatement, authHeader, baseUrl);
+      const enableResult = await executeStatement(enableStatement, authHeader, baseUrl, tokenType);
 
       const result = {
         username,
