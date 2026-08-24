@@ -1,8 +1,8 @@
 import {
   getAuthorizationHeader,
   getBaseURL,
-  SGNL_USER_AGENT,
-} from "@sgnl-actions/utils";
+  SGNL_USER_AGENT
+} from '@sgnl-actions/utils';
 
 class RetryableError extends Error {
   constructor(message) {
@@ -21,10 +21,10 @@ class FatalError extends Error {
 function validateInputs(params) {
   if (
     !params.username ||
-    typeof params.username !== "string" ||
-    params.username.trim() === ""
+    typeof params.username !== 'string' ||
+    params.username.trim() === ''
   ) {
-    throw new FatalError("Invalid or missing username parameter");
+    throw new FatalError('Invalid or missing username parameter');
   }
 }
 
@@ -34,26 +34,26 @@ function parseDuration(durationStr) {
   const match = durationStr.match(/^(\d+(?:\.\d+)?)(ms|s|m|h)?$/i);
   if (!match) {
     console.warn(
-      `Invalid duration format: ${durationStr}, using default 100ms`,
+      `Invalid duration format: ${durationStr}, using default 100ms`
     );
 
     return 100;
   }
 
   const value = parseFloat(match[1]);
-  const unit = (match[2] || "ms").toLowerCase();
+  const unit = (match[2] || 'ms').toLowerCase();
 
   switch (unit) {
-    case "ms":
-      return value;
-    case "s":
-      return value * 1000;
-    case "m":
-      return value * 60 * 1000;
-    case "h":
-      return value * 60 * 60 * 1000;
-    default:
-      return value;
+  case 'ms':
+    return value;
+  case 's':
+    return value * 1000;
+  case 'm':
+    return value * 60 * 1000;
+  case 'h':
+    return value * 60 * 60 * 1000;
+  default:
+    return value;
   }
 }
 
@@ -62,36 +62,36 @@ async function executeStatement(statement, authHeader, baseUrl, tokenType) {
 
   const headers = {
     Authorization: authHeader,
-    "Content-Type": "application/json",
-    Accept: "*/*",
-    "User-Agent": SGNL_USER_AGENT,
+    'Content-Type': 'application/json',
+    Accept: '*/*',
+    'User-Agent': SGNL_USER_AGENT
   };
 
   // Add token type header if specified. Omitted for AUTO, letting Snowflake
   // detect the token type itself.
   if (tokenType) {
-    headers["X-Snowflake-Authorization-Token-Type"] = tokenType;
+    headers['X-Snowflake-Authorization-Token-Type'] = tokenType;
   }
 
   const response = await fetch(url, {
-    method: "POST",
+    method: 'POST',
     headers,
-    body: JSON.stringify({ statement }),
+    body: JSON.stringify({ statement })
   });
 
   if (!response.ok) {
     const responseText = await response.text();
 
     if (response.status === 429) {
-      throw new RetryableError("Snowflake API rate limit exceeded");
+      throw new RetryableError('Snowflake API rate limit exceeded');
     }
 
     if (response.status === 401) {
-      throw new FatalError("Invalid or expired authentication token");
+      throw new FatalError('Invalid or expired authentication token');
     }
 
     if (response.status === 403) {
-      throw new FatalError("Insufficient permissions to execute statement");
+      throw new FatalError('Insufficient permissions to execute statement');
     }
 
     if (response.status === 422) {
@@ -101,12 +101,12 @@ async function executeStatement(statement, authHeader, baseUrl, tokenType) {
 
     if (response.status >= 500) {
       throw new RetryableError(
-        `Snowflake API server error: ${response.status}`,
+        `Snowflake API server error: ${response.status}`
       );
     }
 
     throw new FatalError(
-      `Failed to execute statement: ${response.status} ${response.statusText} - ${responseText}`,
+      `Failed to execute statement: ${response.status} ${response.statusText} - ${responseText}`
     );
   }
 
@@ -117,10 +117,10 @@ async function executeStatement(statement, authHeader, baseUrl, tokenType) {
 // Valid token type values from Snowflake SQL API auth docs:
 // https://docs.snowflake.com/en/developer-guide/sql-api/authenticating
 const VALID_TOKEN_TYPES = new Set([
-  "KEYPAIR_JWT",
-  "OAUTH",
-  "PROGRAMMATIC_ACCESS_TOKEN",
-  "WORKLOAD_IDENTITY_FEDERATION",
+  'KEYPAIR_JWT',
+  'OAUTH',
+  'PROGRAMMATIC_ACCESS_TOKEN',
+  'WORKLOAD_IDENTITY_FEDERATION'
 ]);
 
 /**
@@ -139,14 +139,14 @@ function getTokenType(params, context) {
   const secrets = context.secrets || {};
 
   const override = params.snowflake_auth_token_type;
-  if (override !== undefined && override !== null && override !== "") {
-    if (override === "AUTO") {
+  if (override !== undefined && override !== null && override !== '') {
+    if (override === 'AUTO') {
       return null;
     }
 
     if (!VALID_TOKEN_TYPES.has(override)) {
       throw new FatalError(
-        `Invalid snowflake_auth_token_type "${override}". Valid values: ${[...VALID_TOKEN_TYPES].join(", ")}, AUTO`,
+        `Invalid snowflake_auth_token_type "${override}". Valid values: ${[...VALID_TOKEN_TYPES].join(', ')}, AUTO`
       );
     }
 
@@ -156,14 +156,14 @@ function getTokenType(params, context) {
   // Key off auth method type, not token content. OAuth tokens are often JWTs and would be
   // misdetected by content-inspection.
   if (secrets.BEARER_AUTH_TOKEN) {
-    return "KEYPAIR_JWT";
+    return 'KEYPAIR_JWT';
   }
 
   if (
     secrets.OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET ||
     secrets.OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN
   ) {
-    return "OAUTH";
+    return 'OAUTH';
   }
 
   return null;
@@ -196,7 +196,7 @@ export default {
    * @returns {Promise<Object>} Action result
    */
   invoke: async (params, context) => {
-    console.log("Starting Snowflake Revoke Session action");
+    console.log('Starting Snowflake Revoke Session action');
 
     try {
       validateInputs(params);
@@ -223,7 +223,7 @@ export default {
         disableStatement,
         authHeader,
         baseUrl,
-        tokenType,
+        tokenType
       );
 
       // Add delay between operations
@@ -237,7 +237,7 @@ export default {
         enableStatement,
         authHeader,
         baseUrl,
-        tokenType,
+        tokenType
       );
 
       const result = {
@@ -245,7 +245,7 @@ export default {
         sessionsRevoked: true,
         userDisabled: disableResult.statementHandle || true,
         userReEnabled: enableResult.statementHandle || true,
-        revokedAt: new Date().toISOString(),
+        revokedAt: new Date().toISOString()
       };
 
       console.log(`Successfully revoked sessions for user: ${username}`);
@@ -290,10 +290,10 @@ export default {
     console.log(`Job is being halted (${reason})`);
 
     return {
-      username: username || "unknown",
-      reason: reason || "unknown",
+      username: username || 'unknown',
+      reason: reason || 'unknown',
       haltedAt: new Date().toISOString(),
-      cleanupCompleted: true,
+      cleanupCompleted: true
     };
-  },
+  }
 };

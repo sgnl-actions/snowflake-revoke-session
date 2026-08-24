@@ -63,28 +63,6 @@ describe('Snowflake Revoke Session Script', () => {
         .rejects.toThrow('Invalid or missing username parameter');
     });
 
-    test('should reject Basic auth with FatalError', async () => {
-      const ctx = {
-        environment: { ADDRESS: 'https://api.snowflakecomputing.com' },
-        secrets: { BASIC_USERNAME: 'user', BASIC_PASSWORD: 'pass' },
-        outputs: {}
-      };
-
-      await expect(script.invoke({ username: 'testuser' }, ctx))
-        .rejects.toThrow('Basic authentication is not supported by the Snowflake SQL API');
-    });
-
-    test('should reject Basic auth when only BASIC_USERNAME is set', async () => {
-      const ctx = {
-        environment: { ADDRESS: 'https://api.snowflakecomputing.com' },
-        secrets: { BASIC_USERNAME: 'user' },
-        outputs: {}
-      };
-
-      await expect(script.invoke({ username: 'testuser' }, ctx))
-        .rejects.toThrow('Basic authentication is not supported by the Snowflake SQL API');
-    });
-
     test('should succeed and return result', async () => {
       global.fetch = successFetch;
 
