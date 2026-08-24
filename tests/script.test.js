@@ -34,7 +34,7 @@ describe('Snowflake Revoke Session Script', () => {
     outputs: {}
   };
 
-  const successFetch = async (url, options) => ({
+  const successFetch = async (_url, _options) => ({
     ok: true,
     status: 200,
     json: async () => ({ statementHandle: 'abc123' }),
