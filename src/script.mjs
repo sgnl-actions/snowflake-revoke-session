@@ -143,11 +143,13 @@ function getTokenType(params, context) {
     if (override === "AUTO") {
       return null;
     }
+
     if (!VALID_TOKEN_TYPES.has(override)) {
       throw new FatalError(
         `Invalid snowflake_auth_token_type "${override}". Valid values: ${[...VALID_TOKEN_TYPES].join(", ")}, AUTO`,
       );
     }
+
     return override;
   }
 
@@ -156,19 +158,12 @@ function getTokenType(params, context) {
   if (secrets.BEARER_AUTH_TOKEN) {
     return "KEYPAIR_JWT";
   }
+
   if (
     secrets.OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET ||
     secrets.OAUTH2_AUTHORIZATION_CODE_ACCESS_TOKEN
   ) {
     return "OAUTH";
-  }
-
-  // Basic auth is not supported by Snowflake's SQL API — reject early rather
-  // than letting Snowflake return an opaque 401.
-  if (secrets.BASIC_USERNAME || secrets.BASIC_PASSWORD) {
-    throw new FatalError(
-      "Basic authentication is not supported by the Snowflake SQL API. Use Bearer, OAuth2 Client Credentials, or OAuth2 Authorization Code instead.",
-    );
   }
 
   return null;
