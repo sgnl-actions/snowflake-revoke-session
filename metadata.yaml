@@ -27,6 +27,18 @@ inputs:
       min: 1
       max: 500
 
+  snowflake_auth_token_type:
+    type: text
+    description: >
+      Override the X-Snowflake-Authorization-Token-Type header sent with every
+      SQL API request. Normally auto-selected based on the configured auth method
+      (KEYPAIR_JWT for Bearer, OAUTH for OAuth2 flows). Set to AUTO to omit the
+      header and let Snowflake detect the token type itself.
+      See https://docs.snowflake.com/en/developer-guide/sql-api/authenticating
+    required: false
+    validation:
+      enum: ["KEYPAIR_JWT", "OAUTH", "PROGRAMMATIC_ACCESS_TOKEN", "WORKLOAD_IDENTITY_FEDERATION", "AUTO"]
+
 # Expected output structure
 outputs:
   username:
@@ -54,16 +66,6 @@ secrets:
   BEARER_AUTH_TOKEN:
     type: text
     description: Snowflake API Bearer token (for Bearer authentication)
-    required: false
-
-  BASIC_USERNAME:
-    type: text
-    description: Username for Basic authentication
-    required: false
-
-  BASIC_PASSWORD:
-    type: text
-    description: Password for Basic authentication
     required: false
 
   OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET:
@@ -108,7 +110,6 @@ environment:
 
 optional_one_of:
   - ["secrets.BEARER_AUTH_TOKEN"]
-  - ["secrets.BASIC_USERNAME", "secrets.BASIC_PASSWORD"]
   - [
       "secrets.OAUTH2_CLIENT_CREDENTIALS_CLIENT_SECRET",
       "environment.OAUTH2_CLIENT_CREDENTIALS_CLIENT_ID",
